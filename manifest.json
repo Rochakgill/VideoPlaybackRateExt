@@ -1,0 +1,43 @@
+{
+    "name": "Pepper",
+    "description": "Generic Video Playback Controller",
+    "version": "1.0",
+    "manifest_version": 3,
+    "content_scripts":
+    [
+        {
+            "matches":
+            [
+                "<all_urls>"
+            ],
+            "js":
+            [
+                "/scripts/content.js"
+            ],
+            "run_at": "document_end"
+        }
+    ],
+    "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+    "action":
+    {
+        "default_icon":
+        {
+            "16": "/images/pepper.png",
+            "32": "/images/pepper.png",
+            "48": "/images/pepper.png",
+            "128": "/images/pepper.png"
+        },
+        "default_popup": "popup.html"
+    },
+    "icons":
+    {
+        "16": "/images/pepper.png",
+        "32": "/images/pepper.png",
+        "48": "/images/pepper.png",
+        "128": "/images/pepper.png"
+    }
+}
