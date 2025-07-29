@@ -2,19 +2,31 @@ let currentTab = null;
 
 // Initialize the UI when popup opens
 document.addEventListener('DOMContentLoaded', async () => {
-  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-  currentTab = tabs[0];
-  
-  // Get the stored rate for this domain
-  const hostname = new URL(currentTab.url).hostname;
-  const result = await chrome.storage.local.get(hostname);
-  const savedRate = result[hostname] || 1.0;
-  
-  // Set initial values
-  updateUI(savedRate);
-  
-  // Update video playback rate
-  await setPlaybackRate(savedRate);
+  try {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    currentTab = tabs[0];
+    
+    // Get the stored rate for this domain
+    const hostname = new URL(currentTab.url).hostname;
+    const result = await chrome.storage.local.get(hostname);
+    const savedRate = result[hostname] || 1.0;
+    
+    // Set initial values
+    updateUI(savedRate);
+    
+    // Try to get current video rate first
+    const response = await chrome.tabs.sendMessage(currentTab.id, {
+      action: 'getCurrentRate'
+    });
+    
+    if (response && response.rate !== savedRate) {
+      // Update video playback rate if different
+      await setPlaybackRate(savedRate);
+    }
+  } catch (error) {
+    console.error('Error initializing popup:', error);
+    // Show error in UI if needed
+  }
 });
 
 // Handle slider input
@@ -58,8 +70,23 @@ async function saveAndApplyRate(rate) {
 
 // Apply playback rate to video
 async function setPlaybackRate(rate) {
-  await chrome.tabs.sendMessage(currentTab.id, {
-    action: 'setPlaybackRate',
-    rate: rate
-  });
+  try {
+    const response = await chrome.tabs.sendMessage(currentTab.id, {
+      action: 'setPlaybackRate',
+      rate: parseFloat(rate)
+    });
+
+    if (!response || !response.success) {
+      console.log('Failed to set playback rate. Video might not be ready yet.');
+      // Retry after a short delay
+      setTimeout(async () => {
+        await chrome.tabs.sendMessage(currentTab.id, {
+          action: 'setPlaybackRate',
+          rate: parseFloat(rate)
+        });
+      }, 500);
+    }
+  } catch (error) {
+    console.error('Error setting playback rate:', error);
+  }
 }
