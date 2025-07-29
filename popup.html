@@ -13,7 +13,13 @@
           <p>&nbsp</p>
           <center>Playback Rate</center>
           <center><div id="sliderValue">1x</div></center></br>
-          <center><input type="range" min="1" max="16" value="1" step=0.25 id="playbackrateSlider"></center>
+          <div class="preset-buttons">
+            <button class="preset-btn" data-rate="1.0">1x</button>
+            <button class="preset-btn" data-rate="1.25">1.25x</button>
+            <button class="preset-btn" data-rate="1.5">1.5x</button>
+            <button class="preset-btn" data-rate="2.0">2x</button>
+          </div>
+          <center><input type="range" min="0.25" max="16" value="1" step="0.25" id="playbackrateSlider"></center>
           <p>&nbsp</p>
           <p>Report a bug at
           <a href="mailto:rochakgill1@gmail.com?subject=Pepper bug&body=Hi Rochak,%0D%0AI 

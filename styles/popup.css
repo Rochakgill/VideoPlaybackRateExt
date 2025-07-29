@@ -13,9 +13,34 @@
 .name {
   font-size: 34px;
   font-weight: bold;
-  /*padding: 8px;*/
-  /*padding-bottom: 0px;*/
   text-align: center;
+}
+
+.preset-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.preset-btn {
+  padding: 6px 12px;
+  border: 1px solid #314d3e;
+  background-color: #ffffff;
+  color: #314d3e;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.preset-btn:hover {
+  background-color: #314d3e;
+  color: #ffffff;
+}
+
+.preset-btn.active {
+  background-color: #314d3e;
+  color: #ffffff;
 }
 
 .textbox {
