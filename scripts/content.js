@@ -1,3 +1,15 @@
+// Function to save rate if it's not 1
+function saveRate(rate) {
+  const hostname = window.location.hostname;
+  if (rate === 1) {
+    // If rate is 1, remove the stored value
+    chrome.storage.local.remove(hostname);
+  } else {
+    // Otherwise save the non-default rate
+    chrome.storage.local.set({ [hostname]: rate });
+  }
+}
+
 function setPlayBackRate(rate) {
   const videos = document.getElementsByTagName("video");
   if (videos.length === 0) {
@@ -7,12 +19,11 @@ function setPlayBackRate(rate) {
 
   try {
     for (let video of videos) {
-      const oldRate = video.playbackRate;
       video.playbackRate = rate;
       
       // Verify if the rate was actually changed
       if (video.playbackRate !== rate) {
-        console.log('Failed to set playback rate:', oldRate, '->', rate);
+        console.log('Failed to set playback rate to:', rate);
         return false;
       }
     }
@@ -23,16 +34,27 @@ function setPlayBackRate(rate) {
   }
 }
 
+// Function to apply saved rate or default to 1
+function applySavedRate() {
+  const hostname = window.location.hostname;
+  chrome.storage.local.get(hostname, (result) => {
+    const savedRate = result[hostname];
+    if (savedRate) {
+      setPlayBackRate(savedRate);
+    }
+  });
+}
+
+// Apply saved rate when the script loads
+applySavedRate();
+
 // Add mutation observer to handle dynamically loaded videos
 const observer = new MutationObserver((mutations) => {
   for (const mutation of mutations) {
     for (const node of mutation.addedNodes) {
       if (node.tagName === 'VIDEO') {
-        // Apply last known rate to new videos
-        chrome.storage.local.get(window.location.hostname, (result) => {
-          const savedRate = result[window.location.hostname] || 1.0;
-          setPlayBackRate(savedRate);
-        });
+        applySavedRate();
+        break;
       }
     }
   }
@@ -47,18 +69,20 @@ document.addEventListener('keydown', (e) => {
       const videos = document.getElementsByTagName("video");
       if (videos.length > 0) {
         const newRate = Math.max(0.25, videos[0].playbackRate - 0.25);
-        setPlayBackRate(newRate);
-        chrome.storage.local.set({ [window.location.hostname]: newRate });
-        showRateIndicator(newRate);
+        if (setPlayBackRate(newRate)) {
+          saveRate(newRate);
+          showRateIndicator(newRate);
+        }
       }
     } else if (e.key === '>' || e.key === '.') {
       e.preventDefault();
       const videos = document.getElementsByTagName("video");
       if (videos.length > 0) {
         const newRate = Math.min(16, videos[0].playbackRate + 0.25);
-        setPlayBackRate(newRate);
-        chrome.storage.local.set({ [window.location.hostname]: newRate });
-        showRateIndicator(newRate);
+        if (setPlayBackRate(newRate)) {
+          saveRate(newRate);
+          showRateIndicator(newRate);
+        }
       }
     }
   }
@@ -112,6 +136,9 @@ observer.observe(document.documentElement, {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'setPlaybackRate') {
     const success = setPlayBackRate(request.rate);
+    if (success) {
+      saveRate(request.rate);
+    }
     sendResponse({ success });
   } else if (request.action === 'getCurrentRate') {
     const videos = document.getElementsByTagName("video");
