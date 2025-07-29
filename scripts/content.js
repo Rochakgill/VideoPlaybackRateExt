@@ -125,12 +125,31 @@ function showRateIndicator(rate) {
   const indicator = document.createElement('div');
   indicator.className = 'pepper-rate-indicator';
   indicator.textContent = rate.toFixed(2) + 'x';
-  document.body.appendChild(indicator);
+
+  // Determine where to append the indicator
+  let container = document.body;
+  
+  // Check for fullscreen element
+  const fullscreenElement = 
+    document.fullscreenElement ||
+    document.webkitFullscreenElement ||
+    document.mozFullScreenElement ||
+    document.msFullscreenElement;
+
+  if (fullscreenElement) {
+    container = fullscreenElement;
+  }
+
+  container.appendChild(indicator);
 
   // Remove indicator after 1 second
   setTimeout(() => {
     indicator.style.opacity = '0';
-    setTimeout(() => indicator.remove(), 300);
+    setTimeout(() => {
+      if (indicator.parentElement) {
+        indicator.remove();
+      }
+    }, 300);
   }, 1000);
 }
 
@@ -149,6 +168,16 @@ indicatorStyle.textContent = `
     font-weight: bold;
     z-index: 2147483647;
     transition: opacity 0.3s;
+    pointer-events: none;
+  }
+
+  /* Ensure the indicator is visible in fullscreen */
+  *:fullscreen .pepper-rate-indicator,
+  *:-webkit-full-screen .pepper-rate-indicator,
+  *:-moz-full-screen .pepper-rate-indicator,
+  *:-ms-fullscreen .pepper-rate-indicator {
+    position: absolute;
+    z-index: 2147483647;
   }
 `;
 document.head.appendChild(indicatorStyle);
