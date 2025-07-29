@@ -40,20 +40,30 @@ function applySavedRate() {
   chrome.storage.local.get(hostname, (result) => {
     const savedRate = result[hostname];
     if (savedRate) {
-      setPlayBackRate(savedRate);
+      setTimeout(() => {
+        setPlayBackRate(savedRate);
+        showRateIndicator(savedRate);
+      }, 1000); // Give the video element time to fully initialize
     }
   });
 }
 
-// Apply saved rate when the script loads
+// Apply saved rate when the script loads and periodically check for videos
 applySavedRate();
+const initInterval = setInterval(() => {
+  const videos = document.getElementsByTagName("video");
+  if (videos.length > 0) {
+    applySavedRate();
+    clearInterval(initInterval);
+  }
+}, 500);
 
 // Add mutation observer to handle dynamically loaded videos
 const observer = new MutationObserver((mutations) => {
   for (const mutation of mutations) {
     for (const node of mutation.addedNodes) {
       if (node.tagName === 'VIDEO') {
-        applySavedRate();
+        setTimeout(() => applySavedRate(), 1000);
         break;
       }
     }
@@ -62,27 +72,43 @@ const observer = new MutationObserver((mutations) => {
 
 // Handle keyboard shortcuts
 document.addEventListener('keydown', (e) => {
-  // Check if shift key is pressed and it's either '<' or '>'
-  if (e.shiftKey) {
+  const videos = document.getElementsByTagName("video");
+  if (videos.length === 0) return;
+
+  // Command(Meta) + Shift shortcuts for max and regular speed
+  if (e.metaKey && e.shiftKey) {
+    if (e.key === '.' || e.key === '>') {
+      e.preventDefault();
+      if (setPlayBackRate(16)) {
+        saveRate(16);
+        showRateIndicator(16);
+      }
+    } else if (e.key === ',' || e.key === '<') {
+      e.preventDefault();
+      if (setPlayBackRate(1)) {
+        saveRate(1);
+        showRateIndicator(1);
+      }
+    }
+    return;
+  }
+
+  // Regular Shift shortcuts for incremental changes
+  if (e.shiftKey && !e.metaKey) {
+    const currentRate = videos[0].playbackRate;
     if (e.key === '<' || e.key === ',') {
       e.preventDefault();
-      const videos = document.getElementsByTagName("video");
-      if (videos.length > 0) {
-        const newRate = Math.max(0.25, videos[0].playbackRate - 0.25);
-        if (setPlayBackRate(newRate)) {
-          saveRate(newRate);
-          showRateIndicator(newRate);
-        }
+      const newRate = Math.max(0.25, currentRate - 0.25);
+      if (setPlayBackRate(newRate)) {
+        saveRate(newRate);
+        showRateIndicator(newRate);
       }
     } else if (e.key === '>' || e.key === '.') {
       e.preventDefault();
-      const videos = document.getElementsByTagName("video");
-      if (videos.length > 0) {
-        const newRate = Math.min(16, videos[0].playbackRate + 0.25);
-        if (setPlayBackRate(newRate)) {
-          saveRate(newRate);
-          showRateIndicator(newRate);
-        }
+      const newRate = Math.min(16, currentRate + 0.25);
+      if (setPlayBackRate(newRate)) {
+        saveRate(newRate);
+        showRateIndicator(newRate);
       }
     }
   }
@@ -138,12 +164,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const success = setPlayBackRate(request.rate);
     if (success) {
       saveRate(request.rate);
+      showRateIndicator(request.rate);
     }
     sendResponse({ success });
   } else if (request.action === 'getCurrentRate') {
-    const videos = document.getElementsByTagName("video");
-    const rate = videos.length > 0 ? videos[0].playbackRate : 1;
-    sendResponse({ rate });
+    const hostname = window.location.hostname;
+    chrome.storage.local.get(hostname, (result) => {
+      const videos = document.getElementsByTagName("video");
+      const currentRate = videos.length > 0 ? videos[0].playbackRate : 1;
+      const savedRate = result[hostname] || currentRate;
+      sendResponse({ rate: savedRate });
+    });
+    return true; // Will send response asynchronously
   }
   return true;
 });
