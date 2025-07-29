@@ -1,8 +1,26 @@
 function createOverlayControls(video) {
+  // Check if video is already wrapped
+  if (video.parentNode.classList.contains('pepper-video-wrapper')) {
+    return;
+  }
+
+  // Preserve original video styles
+  const originalWidth = video.style.width;
+  const originalHeight = video.style.height;
+  
   const wrapper = document.createElement('div');
   wrapper.className = 'pepper-video-wrapper';
+  // Maintain video dimensions
+  wrapper.style.width = originalWidth || video.offsetWidth + 'px';
+  wrapper.style.height = originalHeight || video.offsetHeight + 'px';
+  
+  // Replace video with wrapper
   video.parentNode.insertBefore(wrapper, video);
   wrapper.appendChild(video);
+  
+  // Ensure video fills wrapper
+  video.style.width = '100%';
+  video.style.height = '100%';
 
   const leftOverlay = document.createElement('div');
   leftOverlay.className = 'pepper-overlay pepper-left';
@@ -39,35 +57,42 @@ function addStylesheet() {
   const style = document.createElement('style');
   style.textContent = `
     .pepper-video-wrapper {
-      position: relative;
-      display: inline-block;
+      position: relative !important;
+      display: inline-block !important;
+      z-index: 2147483647 !important;
+    }
+    .pepper-video-wrapper video {
+      z-index: 1 !important;
     }
     .pepper-overlay {
-      position: absolute;
-      top: 0;
-      height: 100%;
-      width: 15%;
-      opacity: 0;
-      transition: opacity 0.3s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      background: rgba(0, 0, 0, 0.5);
-      color: white;
+      position: absolute !important;
+      top: 0 !important;
+      height: 100% !important;
+      width: 15% !important;
+      opacity: 0 !important;
+      transition: opacity 0.3s !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      cursor: pointer !important;
+      background: rgba(0, 0, 0, 0.5) !important;
+      color: white !important;
+      z-index: 2147483647 !important;
+      pointer-events: all !important;
     }
     .pepper-overlay:hover {
-      opacity: 1;
+      opacity: 0.8 !important;
     }
     .pepper-left {
-      left: 0;
+      left: 0 !important;
     }
     .pepper-right {
-      right: 0;
+      right: 0 !important;
     }
     .pepper-icon {
-      font-size: 24px;
-      font-weight: bold;
+      font-size: 32px !important;
+      font-weight: bold !important;
+      text-shadow: 0 0 4px rgba(0,0,0,0.5) !important;
     }
   `;
   document.head.appendChild(style);
@@ -120,6 +145,71 @@ const observer = new MutationObserver((mutations) => {
     }
   }
 });
+
+// Handle keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  // Check if shift key is pressed and it's either '<' or '>'
+  if (e.shiftKey) {
+    if (e.key === '<' || e.key === ',') {
+      e.preventDefault();
+      const videos = document.getElementsByTagName("video");
+      if (videos.length > 0) {
+        const newRate = Math.max(0.25, videos[0].playbackRate - 0.25);
+        setPlayBackRate(newRate);
+        chrome.storage.local.set({ [window.location.hostname]: newRate });
+        showRateIndicator(newRate);
+      }
+    } else if (e.key === '>' || e.key === '.') {
+      e.preventDefault();
+      const videos = document.getElementsByTagName("video");
+      if (videos.length > 0) {
+        const newRate = Math.min(16, videos[0].playbackRate + 0.25);
+        setPlayBackRate(newRate);
+        chrome.storage.local.set({ [window.location.hostname]: newRate });
+        showRateIndicator(newRate);
+      }
+    }
+  }
+});
+
+// Show temporary rate indicator
+function showRateIndicator(rate) {
+  // Remove existing indicator if present
+  const existingIndicator = document.querySelector('.pepper-rate-indicator');
+  if (existingIndicator) {
+    existingIndicator.remove();
+  }
+
+  const indicator = document.createElement('div');
+  indicator.className = 'pepper-rate-indicator';
+  indicator.textContent = rate.toFixed(2) + 'x';
+  document.body.appendChild(indicator);
+
+  // Remove indicator after 1 second
+  setTimeout(() => {
+    indicator.style.opacity = '0';
+    setTimeout(() => indicator.remove(), 300);
+  }, 1000);
+}
+
+// Add indicator styles
+const indicatorStyle = document.createElement('style');
+indicatorStyle.textContent = `
+  .pepper-rate-indicator {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-size: 16px;
+    font-weight: bold;
+    z-index: 2147483647;
+    transition: opacity 0.3s;
+  }
+`;
+document.head.appendChild(indicatorStyle);
 
 // Start observing the document for added video elements
 observer.observe(document.documentElement, {
